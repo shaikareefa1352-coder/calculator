@@ -1,0 +1,17 @@
+button {
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+button:active {
+  transform: scale(0.94);
+  filter: brightness(1.18);
+  box-shadow: 0 0 18px 5px #f3a36caa;
+}
+
+.operator:active {
+  box-shadow: 0 0 20px 6px #f3a36cbb;
+}
+
+.equals:active {
+  box-shadow: 0 0 22px 7px #d98253bb;
+}

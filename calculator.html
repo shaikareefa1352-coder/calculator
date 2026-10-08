@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sunny Calculator</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #f7eee5;
+      background-image:
+        radial-gradient(circle at 15% 18%, #fbd9bd 0 9%, transparent 9.5%),
+        radial-gradient(circle at 87% 82%, #d8e8d6 0 12%, transparent 12.5%);
+      color: #342d29;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+
+    .calculator {
+      width: min(100%, 370px);
+      padding: 25px;
+      border: 1px solid #fff9;
+      border-radius: 32px;
+      background: #fffaf4;
+      box-shadow: 0 28px 70px #80634b24;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+
+    .brand { font-size: 15px; font-weight: 800; }
+
+    .badge {
+      padding: 7px 10px;
+      border-radius: 99px;
+      background: #f7e8d8;
+      color: #a16c48;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .screen {
+      min-height: 138px;
+      display: flex;
+      flex-direction: column;
+      justify-content: end;
+      align-items: end;
+      gap: 9px;
+      padding: 14px 5px 23px;
+      text-align: right;
+    }
+
+    #expression { min-height: 20px; color: #aa9a8d; font-size: 14px; }
+
+    #display {
+      max-width: 100%;
+      overflow: hidden;
+      font-size: clamp(42px, 13vw, 58px);
+      font-weight: 650;
+      letter-spacing: -.055em;
+      line-height: 1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 11px;
+    }
+
+    button {
+      height: 62px;
+      border: 0;
+      border-radius: 20px;
+      background: #f3ebe2;
+      color: #554940;
+      font: inherit;
+      font-size: 21px;
+      font-weight: 650;
+      cursor: pointer;
+      box-shadow: 0 3px 0 #e6d9ca;
+      transition: transform .12s, filter .12s;
+    }
+
+    button:hover { filter: brightness(1.025); transform: translateY(-1px); }
+    button:active { transform: translateY(2px); box-shadow: none; }
+    button:focus-visible { outline: 3px solid #d8905c; outline-offset: 3px; }
+
+    .utility { background: #e8eee3; color: #62745b; box-shadow: 0 3px 0 #d5dfce; }
+    .operator { background: #f8dfcb; color: #a86537; box-shadow: 0 3px 0 #edc8aa; font-size: 24px; }
+    .equals { background: #d98253; color: white; box-shadow: 0 3px 0 #bd6940; font-size: 25px; }
+    .zero { grid-column: span 2; text-align: left; padding-left: 25px; }
+
+    footer {
+      margin-top: 18px;
+      color: #b1a397;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    @media (max-width: 390px) {
+      .calculator { padding: 19px; }
+      .keys { gap: 8px; }
+      button { height: 57px; border-radius: 17px; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="calculator" aria-label="Calculator">
+    <header>
+      <span class="brand">little calculations</span>
+      <span class="badge">✦ SUNNY</span>
+    </header>
+
+    <section class="screen" aria-live="polite">
+      <div id="expression"></div>
+      <div id="display">0</div>
+    </section>
+
+    <div class="keys">
+      <button class="utility" data-action="clear">AC</button>
+      <button class="utility" data-action="sign">+/−</button>
+      <button class="utility" data-action="percent">%</button>
+      <button class="operator" data-op="÷">÷</button>
+
+      <button data-digit="7">7</button>
+      <button data-digit="8">8</button>
+      <button data-digit="9">9</button>
+      <button class="operator" data-op="×">×</button>
+
+      <button data-digit="4">4</button>
+      <button data-digit="5">5</button>
+      <button data-digit="6">6</button>
+      <button class="operator" data-op="−">−</button>
+
+      <button data-digit="1">1</button>
+      <button data-digit="2">2</button>
+      <button data-digit="3">3</button>
+      <button class="operator" data-op="+">+</button>
+
+      <button class="zero" data-digit="0">0</button>
+      <button data-action="decimal">.</button>
+      <button class="equals" data-action="equals">=</button>
+    </div>
+
+    <footer>Simple math, sunny mood ☀</footer>
+  </main>
+
+  <script>
+    const display = document.getElementById("display");
+    const expression = document.getElementById("expression");
+
+    let current = "0";
+    let stored = null;
+    let operator = null;
+    let waiting = false;
+    let fresh = false;
+
+    const format = number =>
+      Number.isFinite(number)
+        ? String(Number.parseFloat(number.toPrecision(12)))
+        : "Error";
+
+    function calculate(a, op, b) {
+      if (op === "+") return a + b;
+      if (op === "−") return a - b;
+      if (op === "×") return a * b;
+      if (op === "÷") return b === 0 ? NaN : a / b;
+      return b;
+    }
+
+    function render() {
+      display.textContent = current;
+    }
+
+    function inputDigit(digit) {
+      if (current === "Error" || waiting || fresh) {
+        current = digit;
+        waiting = false;
+        fresh = false;
+      } else if (current === "0") {
+        current = digit;
+      } else if (current.replace(/[-.]/g, "").length < 12) {
+        current += digit;
+      }
+
+      render();
+    }
+
+    function chooseOperator(nextOperator) {
+      if (current === "Error") return;
+
+      const number = Number(current);
+
+      if (operator && !waiting) {
+        stored = calculate(stored, operator, number);
+        current = format(stored);
+      } else {
+        stored = number;
+      }
+
+      operator = nextOperator;
+      waiting = true;
+      fresh = false;
+      expression.textContent = `${format(stored)} ${nextOperator}`;
+      render();
+    }
+
+    function showResult() {
+      if (!operator || stored === null || current === "Error") return;
+
+      const first = stored;
+      const second = waiting ? stored : Number(current);
+
+      current = format(calculate(first, operator, second));
+      expression.textContent = `${format(first)} ${operator} ${format(second)} =`;
+
+      stored = null;
+      operator = null;
+      waiting = false;
+      fresh = true;
+      render();
+    }
+
+    function clearCalculator() {
+      current = "0";
+      stored = null;
+      operator = null;
+      waiting = false;
+      fresh = false;
+      expression.textContent = "";
+      render();
+    }
+
+    document.querySelector(".keys").addEventListener("click", event => {
+      const button = event.target.closest("button");
+      if (!button) return;
+
+      if (button.dataset.digit !== undefined) {
+        inputDigit(button.dataset.digit);
+      } else if (button.dataset.op) {
+        chooseOperator(button.dataset.op);
+      } else {
+        const action = button.dataset.action;
+
+        if (action === "clear") clearCalculator();
+        if (action === "equals") showResult();
+
+        if (action === "sign" && current !== "Error") {
+          current = format(-Number(current));
+          render();
+        }
+
+        if (action === "percent" && current !== "Error") {
+          current = format(Number(current) / 100);
+          render();
+        }
+
+        if (action === "decimal" && current !== "Error") {
+          if (waiting || fresh) {
+            current = "0.";
+            waiting = false;
+            fresh = false;
+          } else if (!current.includes(".")) {
+            current += ".";
+          }
+          render();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
